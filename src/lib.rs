@@ -56,19 +56,19 @@ pub fn search_case_ins<'a>(query: &str, content: &'a str) -> Vec<&'a str> { // {
 
 #[derive(PartialEq)]
 #[derive(Debug)]
-pub enum Input {
+pub enum Input<'a> {
     Std,
-    File(String),
+    File(&'a str),
 }
 
 #[derive(Debug)]
-pub struct Config { // {{{
+pub struct Config<'a> { // {{{
     pub query:       String,
-    pub input:       Input,
+    pub input:       Input<'a>,
     pub ignore_case: bool,
 }
 
-impl Config {
+impl<'a> Config<'a> {
     pub fn build(args: &[String]) -> Result<Config, &'static str> {
 
         let input = if args.len() < 2 {
@@ -80,7 +80,7 @@ impl Config {
             if args[2] == "-" {
                 Input::Std
             } else {
-                Input::File(args[2].clone())
+                Input::File(&args[2])
             }
         };
 
@@ -137,6 +137,6 @@ Trust me.";
         args[2] = String::from("path");
 
         let config = Config::build(&args).unwrap();
-        assert_eq!(config.input, Input::File(String::from("path")));
+        assert_eq!(config.input, Input::File(&"path"));
     } // }}}
 }
