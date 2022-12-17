@@ -56,35 +56,42 @@ pub fn search_case_ins<'a>(query: &str, content: &'a str) -> Vec<&'a str> { // {
 
 #[derive(PartialEq)]
 #[derive(Debug)]
-pub enum Input<'a> {
+pub enum Input {
     Std,
-    File(&'a str),
+    File(String),
 }
 
 #[derive(Debug)]
-pub struct Config<'a> { // {{{
+pub struct Config { // {{{
     pub query:       String,
-    pub input:       Input<'a>,
+    pub input:       Input,
     pub ignore_case: bool,
 }
 
-impl<'a> Config<'a> {
-    pub fn build(args: &[String]) -> Result<Config, &'static str> {
+impl Config {
+    pub fn build(
+        mut args: impl Iterator<Item = String>,
+        ) -> Result<Config, &'static str> {
 
-        let input = if args.len() < 2 {
-            return Err("Usage: minigrep substring [file]
-                       If file is - or absent, read from stdin.");
-        } else if args.len() < 3 {
-            Input::Std
-        } else {
-            if args[2] == "-" {
-                Input::Std
-            } else {
-                Input::File(&args[2])
-            }
+        args.next();
+        let query = match args.next() {
+            Some(query) => query,
+            None => return Err("\
+Error parsing arguments: Usage: minigrep substring [file]
+If file is - or absent, read from stdin."),
         };
 
-        let query = args[1].clone();
+        let input = match args.next() {
+            Some(path) => {
+                if path == "-" {
+                    Input::Std
+                } else {
+                    Input::File(path)
+                }
+            },
+            None => Input::Std,
+        };
+
         let ignore_case = env::var("IGNORE_CASE").is_ok();
 
         Ok(Config { query, input, ignore_case })
@@ -122,21 +129,27 @@ Trust me.";
     #[test]
     fn config_sets_input_method() { // {{{
 
-        let mut args: Vec<String> = vec![String::from("minigrep"), 
-                                         String::from("foo")
-                                        ];
+        let mut args = Vec::new();
+        args.push(String::from("minigrep"));
+        args.push(String::from("foo"));
 
-        let config = Config::build(&args).unwrap();
+        let config = Config::build(args.into_iter()).unwrap();
         assert_eq!(config.input, Input::Std);
 
+        let mut args = Vec::new();
+        args.push(String::from("minigrep"));
+        args.push(String::from("foo"));
         args.push(String::from("-"));
 
-        let config = Config::build(&args).unwrap();
+        let config = Config::build(args.into_iter()).unwrap();
         assert_eq!(config.input, Input::Std);
 
-        args[2] = String::from("path");
+        let mut args = Vec::new();
+        args.push(String::from("minigrep"));
+        args.push(String::from("foo"));
+        args.push(String::from("path"));
 
-        let config = Config::build(&args).unwrap();
-        assert_eq!(config.input, Input::File(&"path"));
+        let config = Config::build(args.into_iter()).unwrap();
+        assert_eq!(config.input, Input::File(String::from("path")));
     } // }}}
 }
